@@ -1,49 +1,99 @@
 import pandas as pd
+#scraper imports
 from time import sleep
 from selenium import webdriver #using selenium to get the HTML
 from bs4 import BeautifulSoup #using beautifulsoup to extract whatever we need from HTML
+#database imports
+from pony import orm
+from datetime import datetime
 
-import os #can help save data as csv file on computer
-
-driver = webdriver.Chrome()
-from_location = 'CHI'
-to_location = 'MIA'
-start = '2024-09-01' #enter date in year-month-day format, for example september 1, 2024 would be 2024-09-1
-end = '2024-09-08'   #enter date in year-month-day format, for example september 1, 2024 would be 2024-09-1
-url = 'https://www.kayak.com/flights/{from_location}-{to_location}/{start}/{end}?sort=bestflight_a'.format(to_location = to_location, from_location = from_location, start = start, end = end)
-#not using keys, just a specific url to get the exact data we need
+import os
+import csv
 
 
+db = orm.Database()
+orm.set_sql_debug(True)
+
+class Item(db.Entity):
+    prices = orm.Set("Price")
+    airlines = orm.Required(str)
+    timings = orm.Optional(str)
+
+class Price(db.Entity):
+    item = orm.Required(Item)
+    date_created = orm.Required(datetime)
+    value = orm.Required(str)
+
+#database init
+def initialize_database():
+    db.bind(provider="sqlite", filename="kayakscraper.db", create_db=True)
+    db.generate_mapping(create_tables=True)
+
+#add data to database
+def add_data(airlines, prices, times):
+    try:
+        with orm.db_session:
+            for airline, price, time in zip(airlines, prices, times):
+                new_item = Item(airlines = airline, timings = time)
+                new_price = Price(item = new_item, date_created = datetime.now(), value = price)
+    except orm.TransactionIntegrityError as err:
+        print("Error: Item exists", err)
+
+    
+
+#scraping functions
+def get_data(from_location, to_location, start, end):
+    url = f'https://www.kayak.com/flights/{from_location}-{to_location}/{start}/{end}?sort=bestflight_a'
+    driver = webdriver.Chrome()
+    driver.get(url)
+    sleep(10)
+    flight_rows = driver.find_elements('xpath', '//div[@class="nrc6-wrapper"]')
+    return flight_rows
+
+def parse_data(flight_rows):
+    lst_prices = []
+    lst_airlines = []
+    lst_time = []
+    
+    for WebElement in flight_rows:
+        elementHTML = WebElement.get_attribute('outerHTML')
+        elementSoup = BeautifulSoup(elementHTML, 'html.parser')
+
+        #Get prices
+        temp_price = elementSoup.find("div", {"class": "nrc6-price-section nrc6-mod-multi-fare"})
+        price = temp_price.find("div", {"class": "f8F1-price-text"})
+        if price:
+            lst_prices.append(price.text)
+        else:
+            lst_prices.append("No price available")
+
+        #Get airline names
+        airline_names = elementSoup.find("div", {"class": "c_cgF c_cgF-mod-variant-default"}).text
+        lst_airlines.append(airline_names)
+
+        #Get times
+        times = elementSoup.find("div", {"class": "vmXl vmXl-mod-variant-large"}).text
+        lst_time.append(times)
+        
+    return lst_airlines, lst_prices, lst_time
 
 
-driver.get(url)
-sleep(10)
-flight_rows = driver.find_elements('xpath', '//div[@class="nrc6-wrapper"]')
-#flight_rows = driver.find_elements_by_xpath('//*[@id="listWrapper"]/div/div[2]/div[2]/div[2]/div[2]/div/div')
-print(flight_rows)
+#main
+def main():
+    from_location = 'CHI'
+    to_location = 'MIA'
+    start = '2024-09-01'   #enter date in year-month-day format, for example september 1, 2024 would be 2024-09-1
+    end = '2024-09-08'     #enter date in year-month-day format, for example september 1, 2024 would be 2024-09-1
+    
+    initialize_database()
+    flight_rows = get_data(from_location, to_location, start, end)
+    airlines, prices, times = parse_data(flight_rows)
 
-lst_prices = []
-lst_airlines = []
-lst_time = []
+    add_data(airlines, prices, times)
+    
+    print(airlines)
+    print(prices)
+    print(times)
 
-for WebElement in flight_rows:
-    elementHTML = WebElement.get_attribute('outerHTML')
-    elementSoup = BeautifulSoup(elementHTML, 'html.parser')
-
-    #get prices
-    temp_price = elementSoup.find("div", {"class": "nrc6-price-section nrc6-mod-multi-fare"})
-    price = temp_price.find("div", {"class": "f8F1-price-text"})
-    lst_prices.append(price.text)
-
-    #get airline
-    airline_names = elementSoup.find("div", {"class": "c_cgF c_cgF-mod-variant-default"}).text
-    lst_airlines.append(airline_names)
-
-    #get times
-    times = elementSoup.find("div", {"class": "vmXl vmXl-mod-variant-large"}).text
-    lst_time.append(times)
-   
-
-print(lst_airlines)
-print(lst_prices)
-print(lst_time)
+if __name__ == "__main__":
+    main()
