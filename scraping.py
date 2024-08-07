@@ -85,10 +85,28 @@ def get_weather_data(start):
     api_key = '1c48db88097cd7f42530582d597c7b59'
     city = start
 
-    url = base_url + "appid" + api_key + "&q=" + city
+    url = base_url + "appid=" + api_key + "&q=" + city
     response = requests.get(url).json()
-    print (response)
+    #print (response)
 
+    temp_kelvin = response['main']['temp']
+    temp_fahrenheit = kelvin_to_fahrenheit(temp_kelvin)
+
+    feels_like_kelvin = response['main']['feels_like']
+    feels_like_fahrenheit = kelvin_to_fahrenheit(feels_like_kelvin)
+
+    description = response['weather'][0]['description']
+    
+
+    print(f"The weather in {city} is: {description}")
+    print(f"Temperature in {city}: {temp_fahrenheit} degrees Fahrenheit")
+    print(f"Feels like Temperature in {city}: {feels_like_fahrenheit} degrees Fahrenheit")
+
+
+def kelvin_to_fahrenheit(kelvin):
+    celsius = kelvin - 273.15
+    fahrenheit = celsius * (9/5) + 32
+    return fahrenheit
 
 
 #main
@@ -107,7 +125,8 @@ def main():
     print(airlines)
     print(prices)
     print(times)
-    #get_weather_data(from_location)
+    get_weather_data(from_location)
+    get_weather_data(to_location)
 
 if __name__ == "__main__":
     main()
