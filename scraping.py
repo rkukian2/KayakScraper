@@ -107,7 +107,7 @@ def main():
     print(airlines)
     print(prices)
     print(times)
-    get_weather_data(from_location)
+    #get_weather_data(from_location)
 
 if __name__ == "__main__":
     main()

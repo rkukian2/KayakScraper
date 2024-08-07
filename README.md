@@ -12,6 +12,7 @@ This Kayak scraper is a Python tool designed to scrape flight information from K
 - Python 3.8+
 - Google Chrome Browser
 - ChromeDriver compatible with the installed Chrome version
+- Conda for Virtual Environment
 
 ### Setup Instructions
 1. **Clone the Repository:**
