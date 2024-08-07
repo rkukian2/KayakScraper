@@ -1,0 +1,12 @@
+# Ignore configuration files that contain sensitive information
+config.json
+
+# Ignore Python bytecodes
+__pycache__/
+*.pyc
+
+# Ignore database files
+*.db
+
+# Ignore IDE specific files
+.idea/
