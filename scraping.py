@@ -6,6 +6,8 @@ from bs4 import BeautifulSoup #using beautifulsoup to extract whatever we need f
 #database imports
 from pony import orm
 from datetime import datetime
+#weather api
+import requests
 
 import os
 import csv
@@ -42,7 +44,7 @@ def add_data(airlines, prices, times):
     
 
 #scraping functions
-def get_data(from_location, to_location, start, end):
+def get_kayak_data(from_location, to_location, start, end):
     url = f'https://www.kayak.com/flights/{from_location}-{to_location}/{start}/{end}?sort=bestflight_a'
     driver = webdriver.Chrome()
     driver.get(url)
@@ -77,6 +79,17 @@ def parse_data(flight_rows):
         
     return lst_airlines, lst_prices, lst_time
 
+#get weather data
+def get_weather_data(start):
+    base_url = "http://api.openweathermap.org/data/2.5/weather?"
+    api_key = '1c48db88097cd7f42530582d597c7b59'
+    city = start
+
+    url = base_url + "appid" + api_key + "&q=" + city
+    response = requests.get(url).json()
+    print (response)
+
+
 
 #main
 def main():
@@ -86,7 +99,7 @@ def main():
     end = '2024-09-08'     #enter date in year-month-day format, for example september 1, 2024 would be 2024-09-1
     
     initialize_database()
-    flight_rows = get_data(from_location, to_location, start, end)
+    flight_rows = get_kayak_data(from_location, to_location, start, end)
     airlines, prices, times = parse_data(flight_rows)
 
     add_data(airlines, prices, times)
@@ -94,6 +107,7 @@ def main():
     print(airlines)
     print(prices)
     print(times)
+    get_weather_data(from_location)
 
 if __name__ == "__main__":
     main()
